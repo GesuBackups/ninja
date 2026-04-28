@@ -332,7 +332,9 @@ Node* NinjaMain::CollectTarget(const char* cpath, string* err) {
 
   Node* node = state_.LookupNode(path);
   if (!node && !build_dir_.empty()) {
-    string builddir_path = build_dir_ + "/" + path;
+    // if 'foo' is not found, try to fallback to $build_dir/foo when build_dir
+    // is set in the manifest
+    std::string builddir_path = build_dir_ + "/" + path;
     uint64_t builddir_slash_bits;
     CanonicalizePath(&builddir_path, &builddir_slash_bits);
     node = state_.LookupNode(builddir_path);
