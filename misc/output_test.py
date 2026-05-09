@@ -7,6 +7,7 @@ In order to simulate a smart terminal it uses the 'script' command.
 
 import os
 import platform
+import re
 import signal
 import subprocess
 import sys
@@ -664,13 +665,22 @@ build stamp-1: touch || dd-1
 build stamp-2: touch || dd-2
   n = 2
 """
-        self._test_expected_error(
-            plan,
-            "-v",
-            r"""[1/4] printf 'ninja_dyndep_version = 1\nbuild stamp-1 | out: dyndep\n' > dd-1
-[2/4] printf 'ninja_dyndep_version = 1\nbuild stamp-2 | out: dyndep\n' > dd-2
-ninja: build stopped: multiple rules generate out.
-""",
+        # The two dd-N printfs run in parallel and may finish in either
+        # order, so compare the leading status lines as a set with the
+        # [N/4] progress prefix stripped.
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            run(plan, "-v", print_err_output=False)
+        actual_lines = cm.exception.cooked_output.splitlines()
+        self.assertEqual(len(actual_lines), 3)
+        self.assertEqual(
+            {re.sub(r"^\[\d+/4\] ", "", line) for line in actual_lines[:2]},
+            {
+                r"printf 'ninja_dyndep_version = 1\nbuild stamp-1 | out: dyndep\n' > dd-1",
+                r"printf 'ninja_dyndep_version = 1\nbuild stamp-2 | out: dyndep\n' > dd-2",
+            },
+        )
+        self.assertEqual(
+            actual_lines[2], "ninja: build stopped: multiple rules generate out."
         )
 
     def test_issue_2681(self):
