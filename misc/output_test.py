@@ -385,6 +385,18 @@ ninja: build stopped: subcommand failed.
         output = run(Output.BUILD_SIMPLE_ECHO, flags='--quiet')
         self.assertEqual(output, 'do thing\n')
 
+    def test_status_flag(self) -> None:
+        'Does --status accept a Ninja-style $-format?'
+        output = run(Output.BUILD_SIMPLE_ECHO,
+                     flags="--status '<${finished}/${total}> '")
+        self.assertEqual(output, '<1/1> echo a\x1b[K\ndo thing\n')
+
+    def test_status_flag_unknown_variable(self) -> None:
+        'Does --status fail clearly on an unknown variable?'
+        self._test_expected_error(
+            Output.BUILD_SIMPLE_ECHO, "--status '$nope '",
+            "ninja: fatal: unknown variable 'nope' in --status format\n")
+
     def test_entering_directory_on_stdout(self) -> None:
         output = run(Output.BUILD_SIMPLE_ECHO, flags='-C$PWD', pipe=True)
         self.assertEqual(output.splitlines()[0][:25], "ninja: Entering directory")
